@@ -1,0 +1,396 @@
+# Persistent Sales Assistant Agent
+
+A FastAPI-based AI Sales Assistant that provides product information, maintains persistent cross-session memory, uses real tools for retrieval, and generates a self-evaluation score for every response.
+
+## Features
+
+* Persistent user memory stored in SQLite
+* Product catalog search tool
+* User memory retrieval tool
+* Response self-evaluation (groundedness, relevance, confidence)
+* Session tracking with UUIDs
+* Conversation history retrieval
+* Memory deletion (GDPR-style reset)
+* Eval analytics endpoint
+* FastAPI Swagger documentation
+
+---
+
+# Architecture
+
+```text
+                 +------------------+
+                 |     Client       |
+                 +--------+---------+
+                          |
+                          v
+                POST /chat/{user_id}
+                          |
+                          v
+                +------------------+
+                |   FastAPI API    |
+                +--------+---------+
+                         |
+                         v
+                +------------------+
+                |   Chat Agent     |
+                +--------+---------+
+                         |
+        +----------------+----------------+
+        |                                 |
+        v                                 v
++----------------+             +------------------+
+| search_catalog |             | get_user_memory  |
++----------------+             +------------------+
+        |                                 |
+        +---------------+-----------------+
+                        |
+                        v
+               Generate Response
+                        |
+                        v
+               Evaluate Response
+                        |
+                        v
+                Return JSON Output
+                        |
+                        v
+                  Store in SQLite
+```
+
+---
+
+# Project Structure
+
+```text
+sales-assistant-agent/
+
+├── app/
+│   ├── services/
+│   │   └── eval_service.py
+│   │
+│   ├── tools/
+│   │   ├── catalog_tool.py
+│   │   ├── memory_tool.py
+│   │   └── eval_tool.py
+│   │
+│   └── sqlite_memory.py
+│
+├── catalog.json
+├── sales_agent.db
+├── main.py
+├── requirements.txt
+├── Procfile
+└── README.md
+```
+
+---
+
+# Product Catalog
+
+```json
+{
+  "plans": [
+    {
+      "name": "Starter",
+      "price": "$49/mo",
+      "features": [
+        "5 users",
+        "API access",
+        "email support"
+      ]
+    },
+    {
+      "name": "Growth",
+      "price": "$199/mo",
+      "features": [
+        "25 users",
+        "webhooks",
+        "priority support"
+      ]
+    },
+    {
+      "name": "Enterprise",
+      "price": "$499/mo",
+      "features": [
+        "unlimited users",
+        "SSO",
+        "audit logs",
+        "SLA"
+      ]
+    }
+  ]
+}
+```
+
+---
+
+# Memory Design
+
+The application stores user conversations in a SQLite database.
+
+Each message is persisted with:
+
+* user_id
+* role (user/assistant)
+* message
+
+This enables:
+
+* Cross-session memory
+* Conversation history retrieval
+* Context injection into future requests
+* Memory deletion when requested
+
+### Why SQLite?
+
+For this assignment, SQLite provides:
+
+* Persistence
+* Simplicity
+* Zero external dependencies
+
+### At Production Scale
+
+I would replace SQLite with:
+
+* PostgreSQL
+* Redis (for short-term memory)
+* Mem0 / Vector Database (for semantic memory retrieval)
+
+The memory layer is abstracted through dedicated memory functions, allowing backend replacement with minimal code changes.
+
+---
+
+# Tool Design
+
+## search_catalog(query)
+
+Searches the catalog and retrieves plan details, pricing, and features.
+
+Example:
+
+```python
+search_catalog("Enterprise")
+```
+
+Returns:
+
+```json
+{
+  "price": "$499/mo",
+  "features": [
+    "SSO",
+    "audit logs",
+    "SLA"
+  ]
+}
+```
+
+---
+
+## get_user_memory(user_id)
+
+Retrieves previous user conversations from SQLite.
+
+Example:
+
+```python
+get_user_memory("vara123")
+```
+
+Used to maintain context across separate API calls.
+
+---
+
+# Eval Design
+
+Every response includes an evaluation block.
+
+Example:
+
+```json
+{
+  "eval": {
+    "groundedness": 0.99,
+    "relevance": 0.93,
+    "confidence": 0.96,
+    "flagged": false,
+    "reasoning": "Response generated using stored user memory and catalog context."
+  }
+}
+```
+
+## Purpose
+
+The evaluation system helps:
+
+* Detect hallucinations
+* Measure confidence
+* Verify catalog grounding
+* Enable future human review workflows
+
+### Limitations
+
+Current scoring is rule-based/self-evaluated.
+
+For production systems I would replace this with:
+
+* LLM-as-Judge evaluation
+* RAG evaluation pipelines
+* Human feedback scoring
+* Automated quality monitoring systems
+
+---
+
+# API Endpoints
+
+## Health Check
+
+```http
+GET /health
+```
+
+## Product Catalog
+
+```http
+GET /catalog
+```
+
+## Chat
+
+```http
+POST /chat/{user_id}
+```
+
+Request:
+
+```json
+{
+  "message": "Does Enterprise include SSO?"
+}
+```
+
+## Conversation History
+
+```http
+GET /chat/{user_id}/history
+```
+
+## Delete Memory
+
+```http
+DELETE /chat/{user_id}/memory
+```
+
+## User Evaluations
+
+```http
+GET /chat/{user_id}/evals
+```
+
+---
+
+# Cross-Session Memory Demonstration
+
+### Call 1
+
+```bash
+curl -X POST "https://YOUR-RAILWAY-URL/chat/vara123" \
+-H "Content-Type: application/json" \
+-d "{\"message\":\"Tell me about Enterprise pricing\"}"
+```
+
+Response:
+
+```json
+{
+  "response": "Enterprise costs $499/mo and includes SSO, audit logs, and SLA."
+}
+```
+
+### Call 2
+
+```bash
+curl -X POST "https://YOUR-RAILWAY-URL/chat/vara123" \
+-H "Content-Type: application/json" \
+-d "{\"message\":\"Does it include audit logs?\"}"
+```
+
+Response:
+
+```json
+{
+  "response": "Yes, Enterprise includes audit logs."
+}
+```
+
+The second request relies on previously stored user context without resending the original pricing question.
+
+---
+
+# Local Development
+
+Create virtual environment:
+
+```bash
+python -m venv venv
+```
+
+Activate:
+
+```bash
+venv\Scripts\activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Run server:
+
+```bash
+uvicorn main:app --reload
+```
+
+Open:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+---
+
+# Deployment
+
+## Railway
+
+Deploy directly from GitHub.
+
+Required files:
+
+```text
+Procfile
+requirements.txt
+```
+
+Procfile:
+
+```text
+web: uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+---
+
+# Live Demo
+
+Railway URL:
+
+https://railway.com/project/377d482b-871b-44cf-b5fc-5dbbd10d00a7/service/981104a1-bc53-4a90-bb02-737352b83837
+
+Swagger Docs:
+
+
+https://sales-assistant-agent-production-a66e.up.railway.app/docs
