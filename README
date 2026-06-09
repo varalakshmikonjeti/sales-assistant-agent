@@ -66,22 +66,34 @@ A FastAPI-based AI Sales Assistant that provides product information, maintains 
 sales-assistant-agent/
 
 ├── app/
+│   ├── agents/
+│   │   └── agent.py
+│   │
+│   ├── db/
+│   │   ├── database.py
+│   │   ├── dependencies.py
+│   │   └── models.py
+│   │
+│   ├── memory/
+│   │   └── sqlite_memory.py
+│   │
+│   ├── models/
+│   │   └── schemas.py
+│   │
 │   ├── services/
 │   │   └── eval_service.py
 │   │
-│   ├── tools/
-│   │   ├── catalog_tool.py
-│   │   ├── memory_tool.py
-│   │   └── eval_tool.py
-│   │
-│   └── sqlite_memory.py
+│   └── tools/
+│       ├── catalog_tool.py
+│       ├── eval_tool.py
+│       └── memory_tool.py
 │
-├── catalog.json
-├── sales_agent.db
-├── main.py
-├── requirements.txt
+├── .gitignore
 ├── Procfile
-└── README.md
+├── README.md
+├── catalog.json
+├── main.py
+└── requirements.txt
 ```
 
 ---
@@ -142,7 +154,7 @@ This enables:
 * Context injection into future requests
 * Memory deletion when requested
 
-### Why SQLite?
+## Why SQLite?
 
 For this assignment, SQLite provides:
 
@@ -150,7 +162,7 @@ For this assignment, SQLite provides:
 * Simplicity
 * Zero external dependencies
 
-### At Production Scale
+## At Production Scale
 
 I would replace SQLite with:
 
@@ -186,8 +198,6 @@ Returns:
   ]
 }
 ```
-
----
 
 ## get_user_memory(user_id)
 
@@ -230,7 +240,7 @@ The evaluation system helps:
 * Verify catalog grounding
 * Enable future human review workflows
 
-### Limitations
+## Limitations
 
 Current scoring is rule-based/self-evaluated.
 
@@ -296,7 +306,7 @@ GET /chat/{user_id}/evals
 ### Call 1
 
 ```bash
-curl -X POST "https://YOUR-RAILWAY-URL/chat/vara123" \
+curl -X POST "https://sales-assistant-agent-production-a66e.up.railway.app/chat/vara123" \
 -H "Content-Type: application/json" \
 -d "{\"message\":\"Tell me about Enterprise pricing\"}"
 ```
@@ -312,7 +322,7 @@ Response:
 ### Call 2
 
 ```bash
-curl -X POST "https://YOUR-RAILWAY-URL/chat/vara123" \
+curl -X POST "https://sales-assistant-agent-production-a66e.up.railway.app/chat/vara123" \
 -H "Content-Type: application/json" \
 -d "{\"message\":\"Does it include audit logs?\"}"
 ```
@@ -388,9 +398,25 @@ web: uvicorn main:app --host 0.0.0.0 --port $PORT
 
 Railway URL:
 
-https://railway.com/project/377d482b-871b-44cf-b5fc-5dbbd10d00a7/service/981104a1-bc53-4a90-bb02-737352b83837
+https://sales-assistant-agent-production-a66e.up.railway.app
 
-Swagger Docs:
-
+Swagger Documentation:
 
 https://sales-assistant-agent-production-a66e.up.railway.app/docs
+
+---
+
+# Submission Links
+
+GitHub Repository:
+
+https://github.com/varalakshmikonjeti/sales-assistant-agent
+
+Live Railway Deployment:
+
+https://sales-assistant-agent-production-a66e.up.railway.app
+
+Swagger API Documentation:
+
+https://sales-assistant-agent-production-a66e.up.railway.app/docs
+
